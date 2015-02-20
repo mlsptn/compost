@@ -2,6 +2,7 @@
 
 #include "ofMain.h"
 #include "ofxOpenCv.h"
+#include "ofxCv.h"
 #include "ofxARToolkitPlus.h"
 #include "ofxAwesomium.h"
 
@@ -22,6 +23,8 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
     
+        bool mouseDown;
+    
         int camW;
         int camH;
         int w,h;
@@ -36,6 +39,7 @@ class ofApp : public ofBaseApp{
     
         ofImage m1, m2, m3, m4;
     
+        ofxCvColorImage resultImage;
         ofxCvColorImage colorImage;
         ofxCvGrayscaleImage grayImage;
 		

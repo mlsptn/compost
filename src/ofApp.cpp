@@ -6,10 +6,10 @@ void ofApp::setup(){
     ofSetWindowShape(w, h);
     ofSetFullscreen(true);
     
-    browserW = 600; browserH = 400;
+    browserW = 800; browserH = 600;
     browser.setup(browserW,browserH);
     browserPos = ofVec2f(w/2 - browser.getWidth()/2,h/2 - browser.getHeight()/2);
-    browser.loadURL("http://partsparts.parts");
+    browser.loadURL("http://www.facebook.com");
     
     m1.loadImage("1.png"); m2.loadImage("2.png");
     m3.loadImage("3.png"); m4.loadImage("4.png");
@@ -25,9 +25,13 @@ void ofApp::setup(){
     cam.setDeviceID(1);
     cam.initGrabber(camW, camH);
     
+    resultImage.allocate(camW, camH);
+    
     artk.setup(camW, camH);
     threshold = 85;
     artk.setThreshold(threshold);
+    
+    ofSetLogLevel(OF_LOG_NOTICE);
 }
 
 //--------------------------------------------------------------
@@ -39,34 +43,71 @@ void ofApp::update(){
     if(cam.isFrameNew()) {
         colorImage.setFromPixels(cam.getPixels(), camW, camH);
         grayImage = colorImage;
+        
+        //grayImage.mirror(false, true); //do this if using mirror
         grayImage.threshold(mouseX);
-        //TODO: threshold image
         artk.update(grayImage.getPixels());
     }
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    //===========================================================
-    // BROWSER
-    //===========================================================
     ofBackground(255);
-    ofSetColor(255);
-    m1.draw(browserPos.x - m1.getWidth()/2, browserPos.y - m1.getHeight());
-    m2.draw(browserPos.x + browserW - m1.getWidth()/2, browserPos.y - m2.getHeight());
-    m3.draw(browserPos.x - m3.getWidth()/2, browserPos.y + browserH);
-    m4.draw(browserPos.x + browserW - m1.getWidth()/2, browserPos.y + browserH);
     
+    //===========================================================
+    // ARTK + BROWSER
+    //===========================================================
+    int numMarkers = artk.getNumDetectedMarkers();
+    
+    ofSetColor(255);
+    grayImage.draw(0, 0, camW/4, camH/4);
+    ofSetHexColor(0x666666);
+    ofDrawBitmapString(ofToString(numMarkers) + " marker(s) found", 10, 20);
+    artk.draw(0, 0, camW/2, camH/2);
+    
+    ofSetColor(255);
     browser.draw(browserPos.x, browserPos.y);
     
+    if(numMarkers == 4) {
+        vector<cv::Point2f> centers;
+        vector<cv::Point2f> orderedCenters;
+        for(int i = 0; i < numMarkers; i++) {
+            ofPoint pt = artk.getDetectedMarkerCenter(i);
+            centers.push_back(cv::Point2f(pt.x,pt.y));
+        }
+        
+        orderedCenters.push_back(centers[0]);
+        orderedCenters.push_back(centers[1]);
+        orderedCenters.push_back(centers[3]);
+        orderedCenters.push_back(centers[2]);
+        
+        ofImage r; r.allocate(camW, camH, OF_IMAGE_COLOR);
+        ofxCv::unwarpPerspective(colorImage, r, orderedCenters);
+        resultImage.setFromPixels(r.getPixelsRef());
+        resultImage.draw(w/2 - browserW/2,h/2 - browserH/2,browserW, browserH);
+    }
+    
     //===========================================================
-    // ARTK
+    // MARKERS
     //===========================================================
     ofSetColor(255);
-    grayImage.draw(0, 0, camW/2, camH/2);
-    ofSetHexColor(0x666666);
-    ofDrawBitmapString(ofToString(artk.getNumDetectedMarkers()) + " marker(s) found", 10, 20);
-    artk.draw(0, 0, camW/2, camH/2);
+    ofSetRectMode(OF_RECTMODE_CENTER);
+    float scale = 1.3;
+    ofFill();
+    ofRect(browserPos.x, browserPos.y,m1.getWidth()*scale, m1.getHeight()*scale);
+    ofRect(browserPos.x+browserW, browserPos.y,m1.getWidth()*scale, m1.getHeight()*scale);
+    ofRect(browserPos.x, browserPos.y+browserH,m1.getWidth()*scale, m1.getHeight()*scale);
+    ofRect(browserPos.x+browserW, browserPos.y+browserH,m1.getWidth()*scale, m1.getHeight()*scale);
+    
+    
+    if(mouseDown) ofEllipse(mouseX, mouseY, 50, 50);
+    
+    ofSetRectMode(OF_RECTMODE_CORNER);
+    m1.draw(browserPos.x - m1.getWidth()/2, browserPos.y - m1.getHeight()/2);
+    m2.draw(browserPos.x + browserW - m1.getWidth()/2, browserPos.y - m1.getHeight()/2);
+    m3.draw(browserPos.x - m3.getWidth()/2, browserPos.y + browserH - m1.getHeight()/2);
+    m4.draw(browserPos.x + browserW - m1.getWidth()/2, browserPos.y + browserH - m1.getHeight()/2);
+    
 }
 
 //--------------------------------------------------------------
@@ -91,12 +132,12 @@ void ofApp::mouseDragged(int x, int y, int button){
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-
+    mouseDown = true;
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
-
+    mouseDown = false;
 }
 
 //--------------------------------------------------------------
